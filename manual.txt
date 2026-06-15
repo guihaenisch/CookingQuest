@@ -1,0 +1,29 @@
+O jogo se dá em fases
+(Manutenção, Exploração (Avanço e Combate)
+
+Manutenção: 
+
+1 - Todo início de turno vc desconta uma determinada quantidade de pontos de fome que aumentam toda rodada. 
+2 - Selecione o herói que vai ficar para cozinhar para a equipe. Role 3 dados e aloque-os nas atividades do Camp:
+	a) Cozinhar
+	b) Cortar lenha
+	c) Empacotar
+2.a) Cozinhar: Escolha uma receita de monstro e aloque os dados rolados para concluir a receita. Consuma X lenhas.
+2.b) Cortar Lenha: Aloque dados para cortar lenha. Produza X lenhas
+2.c) Empacotar: Aloque cados para empacotar X unidades de comida para seu grupo levar para a exploração/combate.
+
+3 - Selecione o Herói para enviar para explorar.
+	a) Ao explorar vc terá desafios para 	passar e pode encontrar desde 		recursos para cozinhar até eventos
+	para interagir e superar os desafios.
+	Quando necessário, aloque dados na 	carta do desafio para superá-lo.
+
+4 - Seleciona o Herói para dedicar ao combate.
+	b) Você é responsável pela defesa da 	sua equipe. Ao encontrar encontros
+	aloque dados para matar seus inimigos
+	e transformá-los em ingredientes.
+
+5 - Quando todos os dados forem alocados e vc não tiver mais dados disponíveis para alocar, você deve retornar ao Camp.
+Você pode adicionar dados na reserva de dados para aumentar sua duração na run.
+
+
+

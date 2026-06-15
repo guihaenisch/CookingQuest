@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gerador de Mapa - Descida da Catedral</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Germania+One&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        :root {
+            --node-size: 40px; /* Reduzido levemente para caber melhor no mobile */
+            --title-size: 28px;
+            --title-y: -2px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a24;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            margin: 0;
+            overflow-x: hidden; /* Previne rolagem lateral no celular */
+        }
+
+        .controls {
+            background: #242533;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 850px;
+            box-sizing: border-box;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: #1a1a24;
+            border-radius: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+
+        select, button { font-family: inherit; }
+        select {
+            padding: 6px; border-radius: 4px; border: 1px solid #555;
+            background: #333; color: white; font-size: 14px; cursor: pointer;
+        }
+
+        input[type="range"] { cursor: pointer; width: 100px; }
+        input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #5865f2; }
+
+        button {
+            background: #5865f2; color: white; border: none; padding: 10px 16px;
+            border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s;
+            flex-grow: 1; /* Estica os botões no celular */
+        }
+        button:hover { background: #4752c4; }
+        .btn-export { background: #2e8b57; }
+        .btn-export:hover { background: #246b43; }
+        
+        #game-area {
+            display: flex;
+            gap: 10px; /* Reduzido para caber no mobile */
+            align-items: stretch;
+            justify-content: center;
+            width: 100%;
+            max-width: 500px; /* Limita no PC, mas deixa fluido no celular */
+            height: 75vh; /* Usa a altura relativa da tela do celular */
+            min-height: 500px;
+            max-height: 800px;
+        }
+
+        /* --- ESTILOS DA TORRE SOTERRADA (TRACKER) --- */
+        #tower-tracker {
+            position: relative;
+            flex: 0 0 50px; /* Largura fixa menor para sobrar espaço pro mapa */
+            background: #111;
+            border: 3px solid #303443;
+            border-radius: 4px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+            border-top-left-radius: 25px;
+            border-top-right-radius: 25px;
+        }
+
+        #tracker-slots {
+            display: flex;
+            flex-direction: column;
+            width: 100%; height: 100%;
+            border-top-left-radius: 22px;
+            border-top-right-radius: 22px;
+            overflow: hidden; 
+        }
+
+        .tracker-slot {
+            flex: 1; width: 100%; border-bottom: 2px solid rgba(0,0,0,0.5);
+            box-sizing: border-box; display: flex; justify-content: center; align-items: center;
+            font-size: 16px; text-shadow: 0 2px 2px #000; box-shadow: inset 0 0 15px rgba(0,0,0,0.4);
+            transition: filter 0.3s ease;
+        }
+        .tracker-slot:last-child { border-bottom: none; }
+
+        #tracker-arrow {
+            position: absolute; left: 100%; transform: translate(5px, -50%);
+            font-size: 24px; color: #ffd700;
+            text-shadow: -2px 0 #000, 0 2px #000, 2px 0 #000, 0 -2px #000;
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none; z-index: 30;
+        }
+
+        /* --- FUNDO DE TIJOLOS DA MASMORRA --- */
+        #map-container {
+            position: relative;
+            flex: 1; /* Preenche o resto da tela */
+            background-color: #252733; 
+            background-image: url('https://www.transparenttextures.com/patterns/brick-wall.png');
+            border: 3px solid #1a1a24; border-radius: 8px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8), 0 10px 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        #banner-container {
+            position: absolute;
+            top: 15px; left: 50%; transform: translateX(-50%);
+            width: 90%; /* Responsivo */
+            max-width: 300px;
+            aspect-ratio: 360/80; /* Mantém a proporção da imagem do banner */
+            background-image: url('imagens/banner.png'); background-size: 100% 100%; background-repeat: no-repeat; background-position: center;
+            display: flex; align-items: center; justify-content: center; z-index: 20; 
+            filter: drop-shadow(0px 4px 5px rgba(0,0,0,0.6));
+        }
+
+        #banner-text {
+            font-family: "Germania One", system-ui; font-size: var(--title-size); 
+            color: #ffffff; text-transform: uppercase; margin-top: var(--title-y); 
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0px 4px 4px rgba(0,0,0,0.8);
+            text-align: center; line-height: 1;
+        }
+
+        #edges { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+        .node-wrapper {
+            position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center;
+            z-index: 10; transition: opacity 0.4s ease;
+            -webkit-tap-highlight-color: transparent; /* Remove piscada azul no toque do celular */
+        }
+
+        .node {
+            width: var(--node-size); height: var(--node-size); background-size: contain; background-repeat: no-repeat; background-position: center;
+            transition: transform 0.2s, filter 0.3s, opacity 0.3s; filter: drop-shadow(0px 4px 3px rgba(0,0,0,0.5));
+        }
+
+        .state-hidden { opacity: 0; pointer-events: none; }
+        .state-dimmed { pointer-events: none; }
+        .state-dimmed .node { opacity: 0.25; filter: grayscale(100%); }
+        .state-future { pointer-events: none; }
+        .state-future .node { opacity: 0.55; }
+        .state-available { cursor: pointer; z-index: 15; }
+        .state-available .node { opacity: 1; filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8)); transform: scale(1.05); }
+        .state-available:hover .node { transform: scale(1.2); }
+        .state-completed { cursor: pointer; }
+        .state-completed .node { opacity: 0.4; filter: grayscale(80%) drop-shadow(0px 2px 2px rgba(0,0,0,0.3)); }
+        .state-completed:hover .node { transform: scale(1.1); filter: grayscale(20%); opacity: 0.8;}
+
+        .check-icon {
+            position: absolute; height: 100%; bottom: 0; right: -55%; object-fit: contain;
+            display: none; pointer-events: none; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.6)); z-index: 15;
+        }
+        .state-completed .check-icon { display: block; }
+
+        @keyframes juicePop {
+            0% { transform: scale(0.1); opacity: 0; filter: brightness(2); }
+            50% { transform: scale(1.3); filter: brightness(1.5); }
+            100% { transform: scale(1.05); opacity: 1; filter: brightness(1) drop-shadow(0 0 10px rgba(255, 215, 0, 0.8)); }
+        }
+        .anim-pop .node { animation: juicePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        .map-edge { stroke-width: 4; transition: opacity 0.4s ease, stroke 0.4s ease, stroke-dasharray 0.4s ease; }
+        .edge-hidden { opacity: 0; }
+        .edge-dimmed { opacity: 0.3; stroke: #5a6275; stroke-dasharray: 8, 8; }
+        .edge-completed { opacity: 0.7; stroke: #9bacb8; stroke-dasharray: none; }
+        .edge-active { opacity: 1; stroke: #ffd700; stroke-dasharray: 12, 12; animation: march 0.8s linear infinite; stroke-width: 5; }
+        @keyframes march { to { stroke-dashoffset: -24; } }
+
+        .node[data-type="boss"] { background-image: url('imagens/boss.png'); width: calc(var(--node-size) * 1.5); height: calc(var(--node-size) * 1.5); }
+        .node[data-type="inicio"] { background-image: url('imagens/inicio.png'); width: calc(var(--node-size) * 1.2); height: calc(var(--node-size) * 1.2); }
+        .node[data-type="combate elite"] { background-image: url('imagens/elite.png'); width: calc(var(--node-size) * 1.2); height: calc(var(--node-size) * 1.2); }
+        .node[data-type="fogueira"] { background-image: url('imagens/fogueira.png'); }
+        .node[data-type="baú"] { background-image: url('imagens/bau.png'); }
+        .node[data-type="combate minion"] { background-image: url('imagens/minion.png'); }
+        .node[data-type="?"] { background-image: url('imagens/misterio.png'); }
+
+        @media (min-width: 600px) {
+            /* Restaura o tamanho do painel caso abra no PC */
+            .control-group { width: auto; }
+            #tower-tracker { flex: 0 0 80px; }
+            .tracker-slot { font-size: 20px; }
+            #tracker-arrow { font-size: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Dificuldade:
+                <select id="difficulty" onchange="generateMap()">
+                    <option value="18">Fácil (18 Nós)</option>
+                    <option value="24" selected>Normal (24 Nós)</option>
+                    <option value="32">Difícil (32 Nós)</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="control-group">
+            <label>Ícones: <input type="range" id="sizeSlider" min="20" max="60" value="35" oninput="updateStyles()"></label>
+            <label>Texto: <input type="range" id="titleSizeSlider" min="15" max="50" value="28" oninput="updateStyles()"></label>
+            <label>Posição: <input type="range" id="titleYSlider" min="-40" max="40" value="-2" oninput="updateStyles()"></label>
+        </div>
+
+        <div class="control-group" style="width: 100%;">
+            <label style="display: flex; align-items: center; gap: 8px; margin: 0 auto;">
+                <input type="checkbox" id="fogOfWar" onchange="updateVisibility()" checked> Exploração Dinâmica
+            </label>
+        </div>
+
+        <div style="display: flex; gap: 10px; width: 100%;">
+            <button onclick="generateMap()">Gerar Novo Mapa</button>
+            <button class="btn-export" onclick="exportToPNG()">Salvar PNG</button>
+        </div>
+    </div>
+
+    <div id="game-area">
+        <div id="tower-tracker">
+            <div id="tracker-slots"></div> 
+            <div id="tracker-arrow">⬅</div>
+        </div>
+
+        <div id="map-container">
+            <div id="banner-container"><span id="banner-text">A Floresta Negra</span></div>
+            <svg id="edges"></svg>
+            <div id="nodes"></div>
+        </div>
+    </div>
+
+    <script>
+        const dungeonNames = [
+            "A Catedral Caída", "O Abismo Profundo", "Ruínas Malditas", 
+            "A Torre Soterrada", "Cripta Sombria", "Pântano Fétido", 
+            "Coração de Fogo", "Labirinto Louco", "Vale das Cinzas"
+        ];
+
+        window.mapNodes = [];
+        window.mapEdges = [];
+        window.totalRows = 0;
+
+        function checkCustomBackground() {
+            const bgImg = new Image(); bgImg.src = 'imagens/background.png';
+            bgImg.onload = () => { document.getElementById('map-container').style.backgroundImage = "url('imagens/background.png')"; document.getElementById('map-container').style.backgroundSize = "100% 100%"; };
+        }
+
+        function updateStyles() {
+            document.documentElement.style.setProperty('--node-size', document.getElementById('sizeSlider').value + 'px');
+            document.documentElement.style.setProperty('--title-size', document.getElementById('titleSizeSlider').value + 'px');
+            document.documentElement.style.setProperty('--title-y', document.getElementById('titleYSlider').value + 'px');
+        }
+
+        function buildTracker(rows) {
+            const trackerSlots = document.getElementById('tracker-slots');
+            trackerSlots.innerHTML = ''; 
+
+            const startHue = 225, endHue = 348;       
+            const startSat = 75, endSat = 80;
+            const startLight = 40, endLight = 35;   
+
+            for(let i = 0; i < rows; i++) {
+                let slot = document.createElement('div');
+                slot.className = 'tracker-slot';
+                
+                let p = i / (rows - 1);
+                let h = startHue + (endHue - startHue) * p;
+                let s = startSat + (endSat - startSat) * p;
+                let l = startLight + (endLight - startLight) * p;
+                
+                slot.style.backgroundColor = `hsl(${h}, ${s}%, ${l}%)`;
+                slot.style.backgroundImage = "url('https://www.transparenttextures.com/patterns/brick-wall.png')";
+
+                if (i === 0) slot.innerHTML = '⛪';
+                else if (i === rows - 1) slot.innerHTML = '💀';
+
+                trackerSlots.appendChild(slot);
+            }
+        }
+
+        function generateMap() {
+            document.getElementById('banner-text').innerText = dungeonNames[Math.floor(Math.random() * dungeonNames.length)];
+            let numNodes = parseInt(document.getElementById('difficulty').value);
+
+            const container = document.getElementById('nodes');
+            const svg = document.getElementById('edges');
+            const mapContainer = document.getElementById('map-container');
+            container.innerHTML = '';
+            while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+            // CÁLCULO DINÂMICO PARA MOBILE
+            const w = mapContainer.clientWidth;
+            const h = mapContainer.clientHeight;
+            svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+            const maxCols = 4;
+            const middleNodes = numNodes - 2; 
+            const minRows = Math.max(6, Math.ceil(middleNodes / maxCols) + 2);
+            const rows = Math.floor(Math.random() * (Math.max(10, minRows) - minRows + 1)) + minRows;
+            window.totalRows = rows; 
+
+            buildTracker(rows); 
+
+            let nodesPerRow = new Array(rows).fill(1);
+            let remaining = numNodes - rows;
+            while(remaining > 0) {
+                let r = Math.floor(Math.random() * (rows - 2)) + 1;
+                if (nodesPerRow[r] < maxCols) { nodesPerRow[r]++; remaining--; }
+            }
+
+            let types = [];
+            let campfiresCount = Math.floor(Math.random() * 4) + 1;
+            for(let i=0; i<campfiresCount; i++) types.push('fogueira');
+            const otherTypes = ['?', 'baú', 'combate minion', 'combate elite'];
+            for(let i=0; i<middleNodes - campfiresCount; i++) types.push(otherTypes[Math.floor(Math.random() * otherTypes.length)]);
+            types.sort(() => Math.random() - 0.5);
+
+            let nodesData = [];
+            let typeIndex = 0;
+            
+            // Ajusta o padding vertical com base no tamanho da tela
+            const paddingTop = Math.max(90, h * 0.15); // Espaço do banner
+            const paddingBottom = Math.max(40, h * 0.08); 
+            const rowHeight = (h - paddingTop - paddingBottom) / (rows - 1);
+
+            for(let r = 0; r < rows; r++) {
+                let rowNodes = [];
+                let count = nodesPerRow[r];
+                for(let c = 0; c < count; c++) {
+                    let type = (r === 0) ? 'inicio' : (r === rows - 1) ? 'boss' : types[typeIndex++];
+                    rowNodes.push({
+                        id: `r${r}c${c}`, row: r, type: type, completed: false,
+                        // Calcula X dinamicamente respeitando a largura do celular
+                        x: (c * (w / count)) + ((w / count) / 2) + ((count === 1) ? 0 : (Math.random() * 10) - 5),
+                        y: paddingTop + (r * rowHeight)
+                    });
+                }
+                nodesData.push(rowNodes);
+            }
+
+            let edges = [];
+            for(let r = 0; r < rows - 1; r++) {
+                let topRow = nodesData[r], bottomRow = nodesData[r+1];
+                topRow.forEach(topNode => {
+                    let closest = bottomRow.reduce((p, c) => Math.abs(c.x - topNode.x) < Math.abs(p.x - topNode.x) ? c : p);
+                    edges.push({from: topNode, to: closest});
+                });
+                bottomRow.forEach(bottomNode => {
+                    if(!edges.some(e => e.to === bottomNode)) {
+                        let closest = topRow.reduce((p, c) => Math.abs(c.x - bottomNode.x) < Math.abs(p.x - bottomNode.x) ? c : p);
+                        edges.push({from: closest, to: bottomNode});
+                    }
+                });
+            }
+
+            window.mapNodes = nodesData.flat();
+            window.mapEdges = edges;
+
+            edges.forEach(e => {
+                let line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.id = `edge-${e.from.id}-${e.to.id}`; line.setAttribute('class', 'map-edge');
+                line.setAttribute('x1', e.from.x); line.setAttribute('y1', e.from.y);
+                line.setAttribute('x2', e.to.x); line.setAttribute('y2', e.to.y);
+                svg.appendChild(line);
+            });
+
+            window.mapNodes.forEach(node => {
+                let wrapper = document.createElement('div');
+                wrapper.id = `node-${node.id}`; wrapper.className = 'node-wrapper';
+                wrapper.style.left = node.x + 'px'; wrapper.style.top = node.y + 'px';
+
+                let div = document.createElement('div'); div.className = 'node';
+                div.setAttribute('data-type', node.type); div.title = node.type.toUpperCase();
+
+                let checkImg = document.createElement('img'); checkImg.className = 'check-icon'; checkImg.src = 'imagens/check.png';
+
+                wrapper.onclick = function() {
+                    let n = window.mapNodes.find(item => item.id === node.id);
+                    const el = document.getElementById(`node-${n.id}`);
+                    if (!el.classList.contains('state-available') && !el.classList.contains('state-completed')) return;
+
+                    if (n.completed) window.mapNodes.forEach(x => { if (x.row >= n.row) x.completed = false; });
+                    else { window.mapNodes.forEach(x => { if (x.row === n.row) x.completed = false; }); n.completed = true; }
+                    updateVisibility(); 
+                };
+
+                wrapper.appendChild(div); wrapper.appendChild(checkImg); container.appendChild(wrapper);
+            });
+
+            updateVisibility();
+        }
+
+        function updateVisibility() {
+            const isFogOn = document.getElementById('fogOfWar').checked;
+
+            let maxCompletedRow = -1;
+            window.mapNodes.forEach(n => { if (n.completed && n.row > maxCompletedRow) maxCompletedRow = n.row; });
+            const frontierRow = Math.min(maxCompletedRow + 1, window.totalRows - 1); 
+
+            const slots = document.querySelectorAll('.tracker-slot');
+            if (slots[frontierRow]) {
+                const arrow = document.getElementById('tracker-arrow');
+                const slotTop = slots[frontierRow].offsetTop;
+                const slotHeight = slots[frontierRow].offsetHeight;
+                arrow.style.top = (slotTop + (slotHeight / 2)) + 'px';
+            }
+
+            window.mapNodes.forEach(n => {
+                let el = document.getElementById(`node-${n.id}`);
+                let state = 'hidden';
+
+                if (n.completed) state = 'completed';
+                else if (n.row < frontierRow) state = 'dimmed'; 
+                else if (n.row === frontierRow) {
+                    let isReachable = (n.row === 0) ? true : window.mapEdges.some(e => e.to.id === n.id && e.from.completed);
+                    state = isReachable ? 'available' : 'dimmed';
+                } else state = isFogOn ? 'hidden' : 'future';
+
+                const wasAvailable = el.classList.contains('state-available');
+                el.className = `node-wrapper state-${state}`;
+
+                if (state === 'available' && !wasAvailable) {
+                    el.classList.remove('anim-pop'); void el.offsetWidth; el.classList.add('anim-pop');
+                }
+            });
+
+            window.mapEdges.forEach(e => {
+                let el = document.getElementById(`edge-${e.from.id}-${e.to.id}`);
+                let fromCompleted = window.mapNodes.find(n => n.id === e.from.id).completed;
+                let toCompleted = window.mapNodes.find(n => n.id === e.to.id).completed;
+                let toAvailable = document.getElementById(`node-${e.to.id}`).classList.contains('state-available');
+                
+                el.className = 'map-edge';
+                if (fromCompleted && toCompleted) el.classList.add('edge-completed');
+                else if (fromCompleted && toAvailable) el.classList.add('edge-active'); 
+                else if (!isFogOn || e.from.row <= frontierRow && e.to.row <= frontierRow) el.classList.add('edge-dimmed');
+                else el.classList.add('edge-hidden');
+            });
+        }
+
+        async function exportToPNG() {
+            const gameArea = document.getElementById('game-area'); 
+            const defaultName = `mapa-${document.getElementById('banner-text').innerText.toLowerCase().replace(/ /g, '-')}.png`;
+            try {
+                const canvas = await html2canvas(gameArea, { useCORS: true, backgroundColor: '#1a1a24', scale: 2 });
+                canvas.toBlob(async function(blob) {
+                    if (window.showSaveFilePicker) {
+                        try {
+                            const handle = await window.showSaveFilePicker({ suggestedName: defaultName, types: [{ description: 'PNG', accept: {'image/png': ['.png']} }]});
+                            const writable = await handle.createWritable();
+                            await writable.write(blob); await writable.close();
+                        } catch (err) { if (err.name !== 'AbortError') fallbackDownload(blob, defaultName); }
+                    } else fallbackDownload(blob, defaultName);
+                }, 'image/png');
+            } catch (e) { alert("Erro ao exportar."); }
+        }
+
+        function fallbackDownload(blob, filename) {
+            const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.download = filename; link.href = url; link.click(); URL.revokeObjectURL(url);
+        }
+
+        // Adiciona um listener para recalcular o mapa se a pessoa virar a tela do celular
+        window.addEventListener('resize', () => {
+            if(window.mapNodes.length > 0) {
+                // Apenas refaz a geração gráfica mantendo as opções
+                generateMap();
+            }
+        });
+
+        window.onload = function() { checkCustomBackground(); updateStyles(); generateMap(); };
+    </script>
+</body>
+</html>

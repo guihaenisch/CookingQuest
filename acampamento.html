@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Acampamento - App Mobile Blindado com Escala</title>
+    <title>Acampamento - App Mobile com Scroll e Efeitos</title>
 
-    <style>
+<style>
         :root {
             --slot-curar-y: 44%;     --slot-curar-x: 9%;
             --slot-preparar-y: 67%;  --slot-preparar-x: 9%;
@@ -14,33 +14,33 @@
             --slot-lenha3-y: 71%;    --slot-lenha3-x: 84%;
         }
 
-        /* ESTRUTURA BASE DO APP */
+        /* ESTRUTURA BASE (Scroll Liberado) */
         body {
             background-color: #000; color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0; padding: 0;
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; width: 100vw;
-            overflow: hidden; 
+            display: flex; justify-content: center; align-items: flex-start;
+            min-height: 100vh; width: 100vw;
+            overflow-x: hidden;
+            overflow-y: auto; 
             user-select: none;
         }
 
-        /* O CONTAINER DO JOGO */
+        /* CONTAINER MESTRE */
         #game-container {
             position: relative;
             background-color: #1a1a24;
             display: flex; flex-direction: column;
             width: 100vw;
-            height: calc(100vw * (2340 / 1080));
-            max-height: 100vh;
-            max-width: calc(100vh * (1080 / 2340));
+            min-height: 100vh; 
             box-shadow: 0 0 30px rgba(0,0,0,1); 
         }
 
         /* FAIXA DE SEGURANÇA (NOTCH) */
         #notch-safe-area {
             width: 100%;
-            height: 5.04%; 
+            height: 5.04vw; 
+            min-height: 30px;
             background-color: #000;
             flex-shrink: 0;
         }
@@ -81,44 +81,52 @@
         }
 
         .hero-col {
+            position: relative;
             display: flex; flex-direction: column;
             background: #242533;
             border: 2px solid #3a3b4c;
             border-radius: 4px;
             overflow: hidden;
             container-type: inline-size;
+            min-height: 40vh; 
         }
 
-        /* BANDEJA DE DADOS */
-        .dice-pool {
-            flex-basis: 35%; 
-            background: #1a1a24;
-            border-bottom: 2px solid #3a3b4c;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: flex-start;
-            gap: 12px; /* Aumentei o espaço entre os dados maiores */
-            padding: 10px;
-            overflow-y: auto;
-        }
-
-        /* IMAGEM DO HERÓI */
-        .hero-img {
-            flex-grow: 1;
+        /* BACKGROUND DO HERÓI */
+        .hero-img-bg {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             background-size: cover;
             background-position: top center;
             background-repeat: no-repeat;
+            transition: filter 0.4s ease;
+            z-index: 1;
         }
 
-        /* ==========================================================
-           NOVA ESCALA - TAMANHO DOBRADO
-           ========================================================== */
+        /* EFEITO DE COR E BRILHO AO ALOCAR OS DADOS */
+        .hero-col:has(.die-2d) .hero-img-bg {
+            filter: grayscale(0.8) brightness(0.35);
+        }
+
+        /* BANDEJA DE DADOS SOBRE O HERÓI (Ajustada para os dados gigantes) */
+        .dice-pool-overlay {
+            position: relative; z-index: 2;
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: row; /* Permite que os dados fiquem lado a lado */
+            flex-wrap: wrap;     /* Quebra a linha se faltar espaço */
+            align-items: center; 
+            justify-content: center;
+            gap: 8px; 
+            padding: 10px 4px;
+        }
+
+        /* BOTÃO DE ROLAR */
         .btn-roll {
+            position: relative; z-index: 3;
             border: none; cursor: pointer; text-align: center;
             transition: filter 0.2s; border-top: 2px solid rgba(255,255,255,0.2);
             text-transform: uppercase; font-weight: bold;
             font-family: 'Georgia', serif;
             
-            /* DOBRADO: Fonte mínima agora é 24px e o padding é muito mais alto */
             font-size: clamp(24px, 5cqi, 45px); 
             padding: clamp(20px, 3cqh, 40px) clamp(4px, 1cqi, 12px);
         }
@@ -130,24 +138,30 @@
         .btn-monk   { background: linear-gradient(to bottom, #e6c229, #99801a); color: #111; text-shadow: 1px 1px 1px rgba(255,255,255,0.8);}
         .btn-rogue  { background: linear-gradient(to bottom, #598b64, #2a4731); color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);}
 
+        /* OS DADOS (TAMANHO REALMENTE DOBRADO) */
         .die-2d {
-            /* DOBRADO: Tamanho mínimo do dado foi de 30px para 60px */
-            width: clamp(60px, 45cqi, 110px); 
-            height: clamp(60px, 45cqi, 110px);
+            /* Dobrado: Mínimo foi para 110px e máxima para 200px. Ocupa 85% da largura da coluna */
+            width: clamp(110px, 85cqi, 200px); 
+            height: clamp(110px, 85cqi, 200px);
             
             position: relative; cursor: pointer; transition: transform 0.2s;
-            filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.6));
+            filter: drop-shadow(0px 6px 8px rgba(0,0,0,0.8));
             animation: fadeIn 0.3s ease forwards;
             display: flex; align-items: center; justify-content: center;
         }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
-        .die-2d.selected { transform: scale(1.15) translateX(-3px); filter: drop-shadow(0px 8px 12px rgba(255, 215, 0, 0.9)); }
+        .die-2d.selected { transform: scale(1.1) translateY(-2px); filter: drop-shadow(0px 8px 12px rgba(255, 215, 0, 0.9)); }
         .die-2d.selected svg polygon[fill="#2b364a"] { fill: #ffd700 !important; }
         .die-2d.selected svg text { fill: #111 !important; }
         
-        /* Dentro da fogueira eles reduzem proporcionalmente */
-        .slot .die-2d { width: 85%; height: 85%; transform: none; animation: none; filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.8));}
+        /* Ajuste de escala proporcional para quando o dado for colocado nos slots da fogueira */
+        .slot .die-2d { 
+            width: 85%; height: 85%; 
+            transform: none; animation: none; 
+            filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.8));
+        }
     </style>
+    
 </head>
 <body>
 
@@ -164,26 +178,31 @@
         </div>
 
         <div id="ui-panel">
+            
             <div class="hero-col">
-                <div class="dice-pool" id="pool-knight"></div>
-                <div class="hero-img" style="background-image: url('imagens/cavaleiiro.png');"></div>
+                <div class="hero-img-bg" style="background-image: url('imagens/cavaleiro.png');"></div>
+                <div class="dice-pool-overlay" id="pool-knight"></div>
                 <button class="btn-roll btn-knight" onclick="rollHero('3d10', 'pool-knight')">Rolar</button>
             </div>
+
             <div class="hero-col">
-                <div class="dice-pool" id="pool-cleric"></div>
-                <div class="hero-img" style="background-image: url('imagens/clerigo.png');"></div>
+                <div class="hero-img-bg" style="background-image: url('imagens/clerigo.png');"></div>
+                <div class="dice-pool-overlay" id="pool-cleric"></div>
                 <button class="btn-roll btn-cleric" onclick="rollHero('3d6', 'pool-cleric')">Rolar</button>
             </div>
+
             <div class="hero-col">
-                <div class="dice-pool" id="pool-monk"></div>
-                <div class="hero-img" style="background-image: url('imagens/monge.png');"></div>
+                <div class="hero-img-bg" style="background-image: url('imagens/monge.png');"></div>
+                <div class="dice-pool-overlay" id="pool-monk"></div>
                 <button class="btn-roll btn-monk" onclick="rollHero('3d12', 'pool-monk')">Rolar</button>
             </div>
+
             <div class="hero-col">
-                <div class="dice-pool" id="pool-rogue"></div>
-                <div class="hero-img" style="background-image: url('imagens/ladino.png');"></div>
+                <div class="hero-img-bg" style="background-image: url('imagens/ladino.png');"></div>
+                <div class="dice-pool-overlay" id="pool-rogue"></div>
                 <button class="btn-roll btn-rogue" onclick="rollHero('3d8', 'pool-rogue')">Rolar</button>
             </div>
+
         </div>
     </div>
 

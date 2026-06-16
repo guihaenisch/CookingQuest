@@ -206,7 +206,7 @@
         </div>
     </div>
 
-    <script type="module">
+<script type="module">
         import DiceBox from "./dice-box/dice-box.es.min.js";
 
         let selectedDie = null;
@@ -215,10 +215,15 @@
 
         function getResponsiveScale() { return window.innerWidth <= 768 ? 9 : 14; }
 
+        // DETECTOR AUTOMÁTICO DE SUBPASTA (Sem usar https:// para não bugar o Worker)
+        // No PC: Vai resultar em "/dice-box/assets/"
+        // No GitHub: Vai resultar em "/CookingQuest/dice-box/assets/"
+        const currentPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+        const autoAssetPath = currentPath + "dice-box/assets/";
+
         const Box = new DiceBox({
             container: "#dice-box", 
-            // Adicione um ponto antes da barra aqui também:
-            assetPath: "./dice-box/assets/", 
+            assetPath: autoAssetPath, // Injeta o caminho inteligente sem o prefixo "https"
             theme: "default", 
             themeColor: "#2b3954", 
             scale: getResponsiveScale(), 
@@ -228,6 +233,7 @@
             settleTimeout: 4000
         });
 
+        // Bloqueia os botões preventivamente
         document.querySelectorAll('#ui-panel button').forEach(b => b.disabled = true);
 
         Box.init().then(() => {
@@ -235,7 +241,10 @@
             setTimeout(() => {
                 document.querySelectorAll('#ui-panel button').forEach(b => b.disabled = false);
             }, 500);
-        }).catch(e => console.error(e));
+        }).catch(e => {
+            console.error("Falha no 3D, liberando botões em 2D:", e);
+            document.querySelectorAll('#ui-panel button').forEach(b => b.disabled = false);
+        });
 
         function getGeometricDieSVG(sides, value) {
             let polygons = ''; let textY = 60; let textX = 50;

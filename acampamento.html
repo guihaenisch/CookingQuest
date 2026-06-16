@@ -207,7 +207,7 @@
     </div>
 
     <script type="module">
-        import DiceBox from "/dice-box/dice-box.es.min.js";
+        import DiceBox from "./dice-box/dice-box.es.min.js";
 
         let selectedDie = null;
         const canvasContainer = document.getElementById('dice-box');
@@ -217,9 +217,15 @@
 
         const Box = new DiceBox({
             container: "#dice-box", 
-            assetPath: "/dice-box/assets/", 
-            theme: "default", themeColor: "#2b3954", 
-            scale: getResponsiveScale(), spinForce: 7, throwForce: 7, startingHeight: 12, settleTimeout: 4000
+            // Adicione um ponto antes da barra aqui também:
+            assetPath: "./dice-box/assets/", 
+            theme: "default", 
+            themeColor: "#2b3954", 
+            scale: getResponsiveScale(), 
+            spinForce: 7, 
+            throwForce: 7, 
+            startingHeight: 12, 
+            settleTimeout: 4000
         });
 
         document.querySelectorAll('#ui-panel button').forEach(b => b.disabled = true);
